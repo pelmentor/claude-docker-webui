@@ -1,0 +1,22 @@
+services:
+  claude-code:
+    build: .
+    container_name: claude-code
+    ports:
+      - "7681:7681"
+    volumes:
+      - /mnt/user/obsmedia:/project
+      - claude-auth:/home/claude/.claude
+    environment:
+      - CLAUDE_USER=claude
+      - CLAUDE_PASSWORD=claude
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7681/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  claude-auth:

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Login - Claude Code</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0a;
+            color: #fafafa;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            overscroll-behavior: none;
+        }
+
+        .bg-glow {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at top, #1a0f00 0%, #0a0a0a 60%);
+            z-index: -1;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .branding {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            margin-bottom: 16px;
+        }
+
+        .logo svg { width: 28px; height: 28px; color: #f97316; }
+
+        .branding h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .branding p {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .card {
+            background: #141414;
+            border: 1px solid #262626;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .error-banner {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .error-banner.show { display: flex; }
+
+        .error-banner svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0a0a0a;
+            border: 1px solid #262626;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px; /* Prevents zoom on iOS */
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input:focus {
+            border-color: rgba(249, 115, 22, 0.5);
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+        }
+
+        input::placeholder { color: #444; }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+        }
+
+        .password-toggle:hover { color: #999; }
+        .password-toggle svg { width: 20px; height: 20px; }
+
+        .remember-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .remember-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #f97316;
+            cursor: pointer;
+        }
+
+        .remember-row label {
+            margin: 0;
+            font-size: 14px;
+            color: #888;
+            cursor: pointer;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: #f97316;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .btn-login:hover { background: #ea580c; }
+        .btn-login:active { transform: scale(0.98); }
+
+        @media (max-height: 500px) {
+            .branding { margin-bottom: 16px; }
+            .logo { width: 40px; height: 40px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="login-card">
+        <div class="branding">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 17 10 11 4 5"></polyline>
+                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg>
+            </div>
+            <h1>Claude Code</h1>
+            <p>Docker Terminal</p>
+        </div>
+
+        <div class="card">
+            <div class="error-banner" id="error-banner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                <span>Invalid username or password</span>
+            </div>
+
+            <form method="POST" action="/login">
+                <label for="username">Username</label>
+                <div class="input-group">
+                    <input type="text" id="username" name="username" required
+                           autocomplete="username" placeholder="Enter username">
+                </div>
+
+                <label for="password">Password</label>
+                <div class="input-group">
+                    <input type="password" id="password" name="password" required
+                           autocomplete="current-password" placeholder="Enter password">
+                    <button type="button" class="password-toggle" id="toggle-password" tabindex="-1">
+                        <svg id="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg id="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="remember-row">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">Remember me</label>
+                </div>
+
+                <button type="submit" class="btn-login">Sign in</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Show error if redirected with ?error=1
+        if (new URLSearchParams(location.search).has('error')) {
+            document.getElementById('error-banner').classList.add('show');
+        }
+
+        // Password toggle
+        document.getElementById('toggle-password').addEventListener('click', () => {
+            const input = document.getElementById('password');
+            const open = document.getElementById('eye-open');
+            const closed = document.getElementById('eye-closed');
+            if (input.type === 'password') {
+                input.type = 'text';
+                open.style.display = 'none';
+                closed.style.display = 'block';
+            } else {
+                input.type = 'password';
+                open.style.display = 'block';
+                closed.style.display = 'none';
+            }
+        });
+
+        // Autofocus password if username is pre-filled
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        if (usernameInput.value) {
+            passwordInput.focus();
+        } else {
+            usernameInput.focus();
+        }
+    </script>
+</body>
+</html>

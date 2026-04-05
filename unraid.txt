@@ -1,0 +1,23 @@
+# Сборка образа
+docker build -t claude-code .
+
+# Запуск
+docker run -d --name claude-code -p 7681:7681 -v /mnt/user/obsmedia:/project -v claude-auth:/home/claude/.claude -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped claude-code
+
+# Логи
+docker logs -f claude-code
+
+# Рестарт (обновит Claude Code при старте)
+docker restart claude-code
+
+# Остановить
+docker stop claude-code
+
+# Удалить контейнер
+docker rm -f claude-code
+
+# Удалить контейнер + образ (auth сохранится)
+docker rm -f claude-code && docker rmi claude-code
+
+# Удалить контейнер + образ + auth volume (полный wipe)
+docker rm -f claude-code && docker rmi claude-code && docker volume rm claude-auth
