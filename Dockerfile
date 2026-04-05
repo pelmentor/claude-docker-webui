@@ -9,8 +9,9 @@ RUN apt-get update && \
     locale-gen en_US.UTF-8 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Non-root user
-RUN groupadd -g 1000 claude && \
+# Non-root user (node:22-slim already has node:1000, replace it)
+RUN userdel -r node 2>/dev/null; \
+    groupadd -g 1000 claude && \
     useradd -m -u 1000 -g 1000 -s /bin/bash claude && \
     echo "claude ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/claude && \
     chmod 0440 /etc/sudoers.d/claude
