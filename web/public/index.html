@@ -10,7 +10,7 @@
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
     <link rel="apple-touch-icon" href="/icon-192.svg">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+    <link rel="stylesheet" href="/vendor/xterm.min.css">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -117,6 +117,7 @@
     <div class="extra-keys" id="extra-keys">
         <button data-key="&#9;">Tab</button>
         <button data-key="ctrl" class="modifier">Ctrl</button>
+        <button data-key="&#3;" class="danger-key">^C</button>
         <button data-key="&#27;">Esc</button>
         <button data-key="&#27;[A" class="arrow">&#8593;</button>
         <button data-key="&#27;[B" class="arrow">&#8595;</button>
@@ -172,9 +173,9 @@
     <div id="toast-container"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+    <script src="/vendor/xterm.min.js"></script>
+    <script src="/vendor/addon-fit.min.js"></script>
+    <script src="/vendor/addon-web-links.min.js"></script>
     <script src="/js/toast.js"></script>
     <script src="/js/terminal.js"></script>
     <script src="/js/ui.js"></script>

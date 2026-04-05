@@ -239,9 +239,14 @@
     </div>
 
     <script>
-        // Show error if redirected with ?error=1
-        if (new URLSearchParams(location.search).has('error')) {
-            document.getElementById('error-banner').classList.add('show');
+        // Show error if redirected with ?error=...
+        const errorType = new URLSearchParams(location.search).get('error');
+        if (errorType) {
+            const banner = document.getElementById('error-banner');
+            banner.classList.add('show');
+            if (errorType === 'locked') {
+                banner.querySelector('span').textContent = 'Too many attempts. Try again in 15 minutes.';
+            }
         }
 
         // Password toggle

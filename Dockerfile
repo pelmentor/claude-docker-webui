@@ -32,6 +32,13 @@ COPY web/package.json web/package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 COPY web/ ./
 
+# Vendor xterm.js assets — no CDN dependency at runtime
+RUN mkdir -p public/vendor && \
+    curl -fsSL https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css -o public/vendor/xterm.min.css && \
+    curl -fsSL https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js -o public/vendor/xterm.min.js && \
+    curl -fsSL https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js -o public/vendor/addon-fit.min.js && \
+    curl -fsSL https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js -o public/vendor/addon-web-links.min.js
+
 # Remove build deps no longer needed at runtime
 # TRAP: apt-get autoremove after purging build-essential can remove libstdc++6
 # which is needed at runtime by node-pty's native .node addon.
@@ -58,7 +65,8 @@ RUN mkdir -p /project && chown claude:claude /project
 
 EXPOSE 7681
 
+# Healthcheck via node (no curl dependency needed at runtime)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-    CMD curl -f http://localhost:7681/api/health || exit 1
+    CMD node -e "require('http').get('http://localhost:7681/api/health',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 ENTRYPOINT ["/entrypoint.sh"]

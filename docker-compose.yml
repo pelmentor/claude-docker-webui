@@ -11,6 +11,7 @@ services:
     environment:
       - CLAUDE_USER=claude
       - CLAUDE_PASSWORD=claude
+      - SESSION_SECRET=CHANGE_ME_TO_RANDOM_STRING
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7681/api/health"]

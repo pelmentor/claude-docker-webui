@@ -1,8 +1,8 @@
 # Запуск
-docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
+docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude -e SESSION_SECRET=CHANGE_ME_TO_RANDOM_STRING --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
 
 # Обновление образа
-docker pull ghcr.io/pelmentor/claude-docker-webui:latest && docker rm -f claude-docker-webui && docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
+docker pull ghcr.io/pelmentor/claude-docker-webui:latest && docker rm -f claude-docker-webui && docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude -e SESSION_SECRET=CHANGE_ME_TO_RANDOM_STRING --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
 
 # Логи
 docker logs -f claude-docker-webui

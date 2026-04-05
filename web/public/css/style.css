@@ -305,6 +305,17 @@ header {
     border-color: #2563eb;
 }
 
+.extra-keys button.danger-key {
+    background: #2a1515;
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+}
+
+.extra-keys button.danger-key:active {
+    background: #ef4444;
+    color: #fff;
+}
+
 /* ======== FONT CONTROLS ======== */
 .font-controls {
     position: fixed;

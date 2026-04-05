@@ -13,7 +13,12 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 7681;
 const CLAUDE_USER = process.env.CLAUDE_USER || 'claude';
 const CLAUDE_PASSWORD = process.env.CLAUDE_PASSWORD || 'claude';
-const SESSION_SECRET = crypto.randomBytes(32).toString('hex');
+// TRAP: Random secret = all sessions invalidated on every restart.
+// Read from env var for persistence across container restarts.
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+if (!process.env.SESSION_SECRET) {
+    console.warn('[WARN] SESSION_SECRET not set — sessions will not survive restarts');
+}
 const PING_INTERVAL = 30000;
 const CLAUDE_BIN = '/home/claude/.local/bin/claude';
 const CLAUDE_PATH = '/home/claude/.local/bin';
@@ -50,6 +55,25 @@ function requireAuth(req, res, next) {
     res.redirect('/login');
 }
 
+// --- Rate limiting ---
+const loginAttempts = new Map(); // ip -> { count, resetAt }
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+
+function isLoginLocked(ip) {
+    const entry = loginAttempts.get(ip);
+    if (!entry || Date.now() > entry.resetAt) return false;
+    return entry.count >= MAX_LOGIN_ATTEMPTS;
+}
+
+function recordLoginFailure(ip) {
+    const now = Date.now();
+    const entry = loginAttempts.get(ip) || { count: 0, resetAt: now + LOCKOUT_MS };
+    if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + LOCKOUT_MS; }
+    entry.count++;
+    loginAttempts.set(ip, entry);
+}
+
 // --- Public routes ---
 app.get('/login', (req, res) => {
     if (req.session && req.session.authenticated) {
@@ -59,8 +83,13 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress;
+    if (isLoginLocked(ip)) {
+        return res.redirect('/login?error=locked');
+    }
     const { username, password, remember } = req.body;
     if (username === CLAUDE_USER && password === CLAUDE_PASSWORD) {
+        loginAttempts.delete(ip);
         req.session.authenticated = true;
         req.session.loginTime = Date.now();
         if (remember === 'on') {
@@ -68,6 +97,7 @@ app.post('/login', (req, res) => {
         }
         res.redirect('/');
     } else {
+        recordLoginFailure(ip);
         res.redirect('/login?error=1');
     }
 });
@@ -91,18 +121,37 @@ app.get('/', requireAuth, (req, res) => {
 app.use('/css', requireAuth, express.static(path.join(__dirname, 'public', 'css')));
 app.use('/js', requireAuth, express.static(path.join(__dirname, 'public', 'js')));
 
+// Vendor assets (public — xterm.js bundled in image, no CDN needed)
+app.use('/vendor', express.static(path.join(__dirname, 'public', 'vendor')));
+
 // PWA assets (public — needed for service worker registration)
 app.use('/manifest.json', express.static(path.join(__dirname, 'public', 'manifest.json')));
 app.use('/sw.js', express.static(path.join(__dirname, 'public', 'sw.js')));
 app.use('/icon-192.svg', express.static(path.join(__dirname, 'public', 'icon-192.svg')));
 app.use('/icon-512.svg', express.static(path.join(__dirname, 'public', 'icon-512.svg')));
 
+// --- Version cache (avoid blocking event loop with execSync on every request) ---
+let cachedVersion = null;
+let versionCachedAt = 0;
+const VERSION_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getClaudeVersion() {
+    const now = Date.now();
+    if (cachedVersion && (now - versionCachedAt) < VERSION_CACHE_TTL) {
+        return cachedVersion;
+    }
+    try {
+        cachedVersion = execSync(`${CLAUDE_BIN} --version 2>/dev/null`, { encoding: 'utf8', timeout: 3000 }).trim();
+        versionCachedAt = now;
+    } catch (e) {
+        cachedVersion = cachedVersion || 'unknown';
+    }
+    return cachedVersion;
+}
+
 // --- API routes ---
 app.get('/api/status', requireAuth, (req, res) => {
-    let version = 'unknown';
-    try {
-        version = execSync(`${CLAUDE_BIN} --version 2>/dev/null`, { encoding: 'utf8' }).trim();
-    } catch (e) { /* ignore */ }
+    const version = getClaudeVersion();
 
     let projectName = '';
     try {
@@ -128,8 +177,14 @@ app.get('/api/status', requireAuth, (req, res) => {
 
 app.get('/api/check-update', requireAuth, async (req, res) => {
     try {
-        const current = execSync(`${CLAUDE_BIN} --version 2>/dev/null`, { encoding: 'utf8' }).trim();
-        const response = await fetch('https://registry.npmjs.org/@anthropic-ai/claude-code/latest');
+        const currentRaw = getClaudeVersion();
+        // TRAP: claude --version outputs "2.1.92 (Claude Code)" but npm registry
+        // returns clean "2.1.92". Extract semver to avoid permanent false-positive.
+        const semverMatch = currentRaw.match(/(\d+\.\d+\.\d+)/);
+        const current = semverMatch ? semverMatch[1] : currentRaw;
+        const response = await fetch('https://registry.npmjs.org/@anthropic-ai/claude-code/latest', {
+            signal: AbortSignal.timeout(5000),
+        });
         const data = await response.json();
         const latest = data.version || '';
         res.json({ current, latest, updateAvailable: latest && latest !== current });
@@ -319,10 +374,14 @@ app.post('/api/update', requireAuth, (req, res) => {
         },
     });
 
-    const newEntry = { pty: term, clients: entry ? entry.clients : new Set() };
+    const newEntry = { pty: term, clients: entry ? entry.clients : new Set(), scrollback: '' };
     terminals.set(sessionId, newEntry);
 
     term.onData((data) => {
+        newEntry.scrollback += data;
+        if (newEntry.scrollback.length > SCROLLBACK_LIMIT) {
+            newEntry.scrollback = newEntry.scrollback.slice(-SCROLLBACK_LIMIT);
+        }
         newEntry.clients.forEach((ws) => {
             if (ws.readyState === 1) ws.send(data);
         });
@@ -363,10 +422,14 @@ app.post('/api/new-session', requireAuth, (req, res) => {
         },
     });
 
-    const newEntry = { pty: term, clients: entry ? entry.clients : new Set() };
+    const newEntry = { pty: term, clients: entry ? entry.clients : new Set(), scrollback: '' };
     terminals.set(sessionId, newEntry);
 
     term.onData((data) => {
+        newEntry.scrollback += data;
+        if (newEntry.scrollback.length > SCROLLBACK_LIMIT) {
+            newEntry.scrollback = newEntry.scrollback.slice(-SCROLLBACK_LIMIT);
+        }
         newEntry.clients.forEach((ws) => {
             if (ws.readyState === 1) ws.send(data);
         });
