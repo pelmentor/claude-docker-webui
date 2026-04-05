@@ -73,4 +73,7 @@ echo "[*] Starting web panel on port 7681..."
 echo "========================================"
 
 cd /home/claude/web
-exec su -s /bin/bash claude -c "export PATH=${CLAUDE_PATH}:\$PATH && cd /home/claude/web && node server.js"
+# TRAP: `su` without `-l` does NOT reset HOME — Node.js would see HOME=/root,
+# causing express-session and other packages to probe wrong directories.
+# Use explicit HOME export to ensure correct user environment.
+exec su -s /bin/bash claude -c "export HOME=/home/claude PATH=${CLAUDE_PATH}:\$PATH && cd /home/claude/web && node server.js"

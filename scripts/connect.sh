@@ -8,7 +8,9 @@ run_claude() {
     cd /project 2>/dev/null || cd ~
 
     # Check if Claude is authenticated
-    if claude auth status > /dev/null 2>&1; then
+    # TRAP: `claude auth status` may exit 0 regardless of auth state.
+    # Parse output text instead of relying on exit code.
+    if claude auth status 2>&1 | grep -qi "logged in"; then
         echo -e "\033[1;32m[*] Claude Code authenticated\033[0m"
         echo -e "\033[1;34m[*] Starting Claude Code in /project...\033[0m"
         echo ""

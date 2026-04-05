@@ -33,7 +33,12 @@ RUN npm install --omit=dev && npm cache clean --force
 COPY web/ ./
 
 # Remove build deps no longer needed at runtime
-RUN apt-get purge -y build-essential python3 make && \
+# TRAP: apt-get autoremove after purging build-essential can remove libstdc++6
+# which is needed at runtime by node-pty's native .node addon.
+# Pin libstdc++6 explicitly before purging to prevent this.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libstdc++6 && \
+    apt-get purge -y build-essential python3 make && \
     apt-get autoremove -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 

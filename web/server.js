@@ -144,6 +144,10 @@ const terminals = new Map(); // sessionId -> { pty, clients }
 function spawnTerminal(sessionId, cols, rows) {
     const existing = terminals.get(sessionId);
     if (existing) {
+        // TRAP: kill() triggers onExit which calls terminals.delete(sessionId).
+        // If onExit fires AFTER we set the new entry, it deletes the new one.
+        // Detach onExit before killing to prevent this race condition.
+        existing.pty.removeAllListeners?.('exit');
         existing.pty.kill();
     }
 
@@ -163,7 +167,7 @@ function spawnTerminal(sessionId, cols, rows) {
         },
     });
 
-    const entry = { pty: term, clients: new Set() };
+    const entry = { pty: term, clients: existing ? existing.clients : new Set() };
     terminals.set(sessionId, entry);
 
     term.onData((data) => {
@@ -175,7 +179,10 @@ function spawnTerminal(sessionId, cols, rows) {
     });
 
     term.onExit(() => {
-        terminals.delete(sessionId);
+        // Only delete if this is still the current terminal for the session
+        if (terminals.get(sessionId) === entry) {
+            terminals.delete(sessionId);
+        }
         entry.clients.forEach((ws) => {
             if (ws.readyState === 1) {
                 ws.send('\r\n\x1b[1;31m[Terminal process exited]\x1b[0m\r\n');
@@ -190,8 +197,12 @@ function spawnTerminal(sessionId, cols, rows) {
 const wss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
-    // Parse session from cookie
-    sessionMiddleware(request, {}, () => {
+    // TRAP: sessionMiddleware expects a real ServerResponse object.
+    // Passing {} works only when session is read-only (cookie already set).
+    // If session needs to write headers (new session, expiry refresh), it would
+    // call res.setHeader() on {} and throw. Use a shim to prevent crashes.
+    const resShim = { getHeader() {}, setHeader() {}, end() {} };
+    sessionMiddleware(request, resShim, () => {
         if (!request.session || !request.session.authenticated) {
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
             socket.destroy();
@@ -264,12 +275,9 @@ wss.on('close', () => clearInterval(pingInterval));
 // --- API: Terminal control ---
 app.post('/api/restart', requireAuth, (req, res) => {
     const sessionId = req.session.id;
-    const entry = terminals.get(sessionId);
-    if (entry) {
-        entry.pty.kill();
-    }
     const cols = req.body.cols || 80;
     const rows = req.body.rows || 24;
+    // spawnTerminal handles killing the old pty safely (no race condition)
     spawnTerminal(sessionId, cols, rows);
     res.json({ ok: true, action: 'restart' });
 });
@@ -278,6 +286,7 @@ app.post('/api/update', requireAuth, (req, res) => {
     const sessionId = req.session.id;
     const entry = terminals.get(sessionId);
     if (entry) {
+        entry.pty.removeAllListeners?.('exit');
         entry.pty.kill();
     }
 
@@ -321,6 +330,7 @@ app.post('/api/new-session', requireAuth, (req, res) => {
     const sessionId = req.session.id;
     const entry = terminals.get(sessionId);
     if (entry) {
+        entry.pty.removeAllListeners?.('exit');
         entry.pty.kill();
     }
 
