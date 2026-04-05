@@ -26,7 +26,7 @@ if [ -x "${CLAUDE_BIN}" ]; then
     echo "[OK] Claude Code found (${VERSION})"
 else
     echo "[*] First run — installing Claude Code..."
-    if su - claude -c "curl -fsSL https://claude.ai/install.sh | sh" 2>&1; then
+    if su - claude -c "curl -fsSL https://claude.ai/install.sh | bash" 2>&1; then
         echo "[OK] Claude Code installed"
         echo "$(date '+%Y-%m-%d %H:%M:%S') Installed" >> /home/claude/.claude/update.log
     else

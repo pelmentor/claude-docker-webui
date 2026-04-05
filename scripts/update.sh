@@ -13,7 +13,7 @@ echo -e "\033[1;37m[*] Current version:\033[0m ${CURRENT_VERSION}"
 echo -e "\033[1;37m[*] Checking for updates...\033[0m"
 echo ""
 
-if curl -fsSL https://claude.ai/install.sh | sh 2>&1; then
+if curl -fsSL https://claude.ai/install.sh | bash 2>&1; then
     NEW_VERSION=$(claude --version 2>/dev/null || echo "unknown")
     echo ""
     if [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
