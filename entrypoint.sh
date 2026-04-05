@@ -18,8 +18,8 @@ fi
 
 # 2. Install Claude Code (first run only, updates via UI button)
 echo "----------------------------------------"
-mkdir -p /home/claude/.claude
-chown claude:claude /home/claude/.claude
+mkdir -p /home/claude/.claude /home/claude/.local
+chown claude:claude /home/claude/.claude /home/claude/.local
 
 if [ -x "${CLAUDE_BIN}" ]; then
     VERSION=$(su - claude -c "${CLAUDE_BIN} --version 2>/dev/null" || echo "unknown")
