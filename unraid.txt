@@ -1,23 +1,23 @@
 # Запуск
-docker run -d --name claude-code -p 7681:7681 -v /mnt/user/obsmedia:/project -v claude-auth:/home/claude/.claude -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
+docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v claude-auth:/home/claude/.claude -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
 
 # Обновление
-docker pull ghcr.io/pelmentor/claude-docker-webui:latest && docker rm -f claude-code && docker run -d --name claude-code -p 7681:7681 -v /mnt/user/obsmedia:/project -v claude-auth:/home/claude/.claude -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
+docker pull ghcr.io/pelmentor/claude-docker-webui:latest && docker rm -f claude-docker-webui && docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v claude-auth:/home/claude/.claude -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
 
 # Логи
-docker logs -f claude-code
+docker logs -f claude-docker-webui
 
 # Рестарт (обновит Claude Code при старте)
-docker restart claude-code
+docker restart claude-docker-webui
 
 # Остановить
-docker stop claude-code
+docker stop claude-docker-webui
 
 # Удалить контейнер
-docker rm -f claude-code
+docker rm -f claude-docker-webui
 
 # Удалить контейнер + образ (auth сохранится)
-docker rm -f claude-code && docker rmi ghcr.io/pelmentor/claude-docker-webui:latest
+docker rm -f claude-docker-webui && docker rmi ghcr.io/pelmentor/claude-docker-webui:latest
 
 # Удалить контейнер + образ + auth volume (полный wipe)
-docker rm -f claude-code && docker rmi ghcr.io/pelmentor/claude-docker-webui:latest && docker volume rm claude-auth
+docker rm -f claude-docker-webui && docker rmi ghcr.io/pelmentor/claude-docker-webui:latest && docker volume rm claude-auth

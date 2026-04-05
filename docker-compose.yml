@@ -1,7 +1,7 @@
 services:
-  claude-code:
+  claude-docker-webui:
     build: .
-    container_name: claude-code
+    container_name: claude-docker-webui
     ports:
       - "7681:7681"
     volumes:
