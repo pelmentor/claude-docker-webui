@@ -23,8 +23,11 @@ ENV LANG=en_US.UTF-8 \
     TERM=xterm-256color \
     SHELL=/bin/bash
 
-# Install Claude Code (native installer)
-RUN su - claude -c "curl -fsSL https://claude.ai/install.sh | sh"
+# Install Claude Code (native installer, as claude user)
+USER claude
+RUN curl -fsSL https://claude.ai/install.sh | sh
+ENV PATH="/home/claude/.claude/local/bin:${PATH}"
+USER root
 
 # Web application
 WORKDIR /home/claude/web
