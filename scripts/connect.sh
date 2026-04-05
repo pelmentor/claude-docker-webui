@@ -2,6 +2,7 @@
 
 # Claude Code connection script
 # Runs inside the terminal via node-pty
+export PATH="/home/claude/.claude/local/bin:$PATH"
 
 run_claude() {
     cd /project 2>/dev/null || cd ~

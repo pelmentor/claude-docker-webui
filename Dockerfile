@@ -23,9 +23,8 @@ ENV LANG=en_US.UTF-8 \
     TERM=xterm-256color \
     SHELL=/bin/bash
 
-# Install Claude Code
-RUN npm install -g @anthropic-ai/claude-code && \
-    npm cache clean --force
+# Claude Code installed at first boot via entrypoint (native installer)
+# Persisted in claude-auth volume at /home/claude/.claude/
 
 # Web application
 WORKDIR /home/claude/web
