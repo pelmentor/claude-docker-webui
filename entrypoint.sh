@@ -16,42 +16,25 @@ else
     echo "claude:claude" | chpasswd 2>/dev/null
 fi
 
-# 2. Install or update Claude Code
+# 2. Install Claude Code (first run only, updates via UI button)
 echo "----------------------------------------"
 mkdir -p /home/claude/.claude
 chown claude:claude /home/claude/.claude
-UPDATE_LOG="/home/claude/.claude/update.log"
 
 if [ -x "${CLAUDE_BIN}" ]; then
-    CURRENT_VERSION=$(su - claude -c "${CLAUDE_BIN} --version 2>/dev/null" || echo "unknown")
-    echo "[*] Current version: ${CURRENT_VERSION}"
-    echo "[*] Checking for updates..."
-
-    if su - claude -c "curl -fsSL https://claude.ai/install.sh | sh" 2>&1 | tee /tmp/update_output.txt; then
-        NEW_VERSION=$(su - claude -c "${CLAUDE_BIN} --version 2>/dev/null" || echo "unknown")
-        if [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
-            echo "[OK] Updated: ${CURRENT_VERSION} -> ${NEW_VERSION}"
-            echo "$(date '+%Y-%m-%d %H:%M:%S') Updated: ${CURRENT_VERSION} -> ${NEW_VERSION}" >> "${UPDATE_LOG}"
-        else
-            echo "[OK] Already latest: ${NEW_VERSION}"
-            echo "$(date '+%Y-%m-%d %H:%M:%S') Already latest: ${NEW_VERSION}" >> "${UPDATE_LOG}"
-        fi
-    else
-        echo "[WARN] Update failed, continuing with current version"
-        echo "$(date '+%Y-%m-%d %H:%M:%S') Update failed" >> "${UPDATE_LOG}"
-    fi
+    VERSION=$(su - claude -c "${CLAUDE_BIN} --version 2>/dev/null" || echo "unknown")
+    echo "[OK] Claude Code found (${VERSION})"
 else
     echo "[*] First run — installing Claude Code..."
     if su - claude -c "curl -fsSL https://claude.ai/install.sh | sh" 2>&1; then
         echo "[OK] Claude Code installed"
-        echo "$(date '+%Y-%m-%d %H:%M:%S') Installed" >> "${UPDATE_LOG}"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Installed" >> /home/claude/.claude/update.log
     else
         echo "[ERROR] Installation failed!"
         exit 1
     fi
+    chown -R claude:claude /home/claude/.claude 2>/dev/null || true
 fi
-rm -f /tmp/update_output.txt
-chown -R claude:claude /home/claude/.claude 2>/dev/null || true
 
 # 3. Verify Claude Code works
 echo "----------------------------------------"
