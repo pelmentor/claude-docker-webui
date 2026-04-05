@@ -194,8 +194,11 @@ app.get('/api/check-update', requireAuth, async (req, res) => {
 });
 
 // --- Terminal management ---
-const SCROLLBACK_LIMIT = 100 * 1024; // 100KB scrollback buffer per session
-const terminals = new Map(); // sessionId -> { pty, clients, scrollback }
+// Single shared terminal for all clients (single-user app).
+// All browsers/devices see the same terminal session.
+const SCROLLBACK_LIMIT = 100 * 1024; // 100KB scrollback buffer
+const TERMINAL_KEY = 'shared';
+const terminals = new Map(); // key -> { pty, clients, scrollback }
 
 function spawnTerminal(sessionId, cols, rows) {
     const existing = terminals.get(sessionId);
@@ -277,16 +280,14 @@ server.on('upgrade', (request, socket, head) => {
 });
 
 wss.on('connection', (ws, request) => {
-    const sessionId = request.session.id;
-
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
 
-    // Get or create terminal
-    let entry = terminals.get(sessionId);
+    // All clients share one terminal (single-user app)
+    let entry = terminals.get(TERMINAL_KEY);
     if (!entry) {
-        spawnTerminal(sessionId, 80, 24);
-        entry = terminals.get(sessionId);
+        spawnTerminal(TERMINAL_KEY, 80, 24);
+        entry = terminals.get(TERMINAL_KEY);
     }
 
     entry.clients.add(ws);
@@ -341,17 +342,14 @@ wss.on('close', () => clearInterval(pingInterval));
 
 // --- API: Terminal control ---
 app.post('/api/restart', requireAuth, (req, res) => {
-    const sessionId = req.session.id;
     const cols = req.body.cols || 80;
     const rows = req.body.rows || 24;
-    // spawnTerminal handles killing the old pty safely (no race condition)
-    spawnTerminal(sessionId, cols, rows);
+    spawnTerminal(TERMINAL_KEY, cols, rows);
     res.json({ ok: true, action: 'restart' });
 });
 
 app.post('/api/update', requireAuth, (req, res) => {
-    const sessionId = req.session.id;
-    const entry = terminals.get(sessionId);
+    const entry = terminals.get(TERMINAL_KEY);
     if (entry) {
         entry.pty.removeAllListeners?.('exit');
         entry.pty.kill();
@@ -375,7 +373,7 @@ app.post('/api/update', requireAuth, (req, res) => {
     });
 
     const newEntry = { pty: term, clients: entry ? entry.clients : new Set(), scrollback: '' };
-    terminals.set(sessionId, newEntry);
+    terminals.set(TERMINAL_KEY, newEntry);
 
     term.onData((data) => {
         newEntry.scrollback += data;
@@ -390,7 +388,7 @@ app.post('/api/update', requireAuth, (req, res) => {
     term.onExit(() => {
         // After update, restart with connect.sh
         setTimeout(() => {
-            spawnTerminal(sessionId, req.body.cols || 80, req.body.rows || 24);
+            spawnTerminal(TERMINAL_KEY, req.body.cols || 80, req.body.rows || 24);
         }, 1000);
     });
 
@@ -398,8 +396,7 @@ app.post('/api/update', requireAuth, (req, res) => {
 });
 
 app.post('/api/new-session', requireAuth, (req, res) => {
-    const sessionId = req.session.id;
-    const entry = terminals.get(sessionId);
+    const entry = terminals.get(TERMINAL_KEY);
     if (entry) {
         entry.pty.removeAllListeners?.('exit');
         entry.pty.kill();
@@ -423,7 +420,7 @@ app.post('/api/new-session', requireAuth, (req, res) => {
     });
 
     const newEntry = { pty: term, clients: entry ? entry.clients : new Set(), scrollback: '' };
-    terminals.set(sessionId, newEntry);
+    terminals.set(TERMINAL_KEY, newEntry);
 
     term.onData((data) => {
         newEntry.scrollback += data;
@@ -437,7 +434,7 @@ app.post('/api/new-session', requireAuth, (req, res) => {
 
     term.onExit(() => {
         // After exit, go back to connect.sh
-        spawnTerminal(sessionId, req.body.cols || 80, req.body.rows || 24);
+        spawnTerminal(TERMINAL_KEY, req.body.cols || 80, req.body.rows || 24);
     });
 
     res.json({ ok: true, action: 'new-session' });
