@@ -139,7 +139,8 @@ app.get('/api/check-update', requireAuth, async (req, res) => {
 });
 
 // --- Terminal management ---
-const terminals = new Map(); // sessionId -> { pty, clients }
+const SCROLLBACK_LIMIT = 100 * 1024; // 100KB scrollback buffer per session
+const terminals = new Map(); // sessionId -> { pty, clients, scrollback }
 
 function spawnTerminal(sessionId, cols, rows) {
     const existing = terminals.get(sessionId);
@@ -167,10 +168,16 @@ function spawnTerminal(sessionId, cols, rows) {
         },
     });
 
-    const entry = { pty: term, clients: existing ? existing.clients : new Set() };
+    const entry = { pty: term, clients: existing ? existing.clients : new Set(), scrollback: '' };
     terminals.set(sessionId, entry);
 
     term.onData((data) => {
+        // Append to scrollback buffer (ring buffer, keep last SCROLLBACK_LIMIT bytes)
+        entry.scrollback += data;
+        if (entry.scrollback.length > SCROLLBACK_LIMIT) {
+            entry.scrollback = entry.scrollback.slice(-SCROLLBACK_LIMIT);
+        }
+
         entry.clients.forEach((ws) => {
             if (ws.readyState === 1) { // WebSocket.OPEN
                 ws.send(data);
@@ -228,6 +235,11 @@ wss.on('connection', (ws, request) => {
     }
 
     entry.clients.add(ws);
+
+    // Replay scrollback buffer so reconnected client sees previous output
+    if (entry.scrollback) {
+        ws.send(entry.scrollback);
+    }
 
     ws.on('message', (data) => {
         const msg = data.toString();
