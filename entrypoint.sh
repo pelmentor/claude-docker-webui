@@ -26,6 +26,11 @@ chown claude:claude /home/claude/.claude /home/claude/.local
 # NOT inside ~/.claude/ (directory). Without this symlink, auth is lost
 # on container recreation because only ~/.claude/ is a persisted volume.
 # Symlink it into the volume so it survives restarts.
+# Clean up empty/corrupted .claude.json from volume (left by previous bug)
+if [ -f /home/claude/.claude/.claude.json ] && [ ! -s /home/claude/.claude/.claude.json ]; then
+    rm -f /home/claude/.claude/.claude.json
+fi
+
 if [ -f /home/claude/.claude/.claude.json ] && [ ! -L /home/claude/.claude.json ]; then
     # Auth file exists in volume from previous run — restore symlink
     ln -sf /home/claude/.claude/.claude.json /home/claude/.claude.json
@@ -38,9 +43,10 @@ elif [ -f /home/claude/.claude.json ] && [ ! -L /home/claude/.claude.json ]; the
     chown -h claude:claude /home/claude/.claude.json
     chown claude:claude /home/claude/.claude/.claude.json
 elif [ ! -e /home/claude/.claude.json ]; then
-    # No auth file — create symlink target so Claude writes into the volume
-    touch /home/claude/.claude/.claude.json
-    chown claude:claude /home/claude/.claude/.claude.json
+    # No auth file — create symlink so Claude writes into the volume
+    # TRAP: Do NOT use `touch` — empty file is invalid JSON and Claude
+    # treats it as corrupted. Just create the symlink, Claude will create
+    # the file itself on first auth.
     ln -sf /home/claude/.claude/.claude.json /home/claude/.claude.json
     chown -h claude:claude /home/claude/.claude.json
 fi
