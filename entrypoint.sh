@@ -22,6 +22,29 @@ echo "----------------------------------------"
 mkdir -p /home/claude/.claude /home/claude/.local
 chown claude:claude /home/claude/.claude /home/claude/.local
 
+# TRAP: Claude Code stores auth token in ~/.claude.json (file in HOME),
+# NOT inside ~/.claude/ (directory). Without this symlink, auth is lost
+# on container recreation because only ~/.claude/ is a persisted volume.
+# Symlink it into the volume so it survives restarts.
+if [ -f /home/claude/.claude/.claude.json ] && [ ! -L /home/claude/.claude.json ]; then
+    # Auth file exists in volume from previous run — restore symlink
+    ln -sf /home/claude/.claude/.claude.json /home/claude/.claude.json
+    chown -h claude:claude /home/claude/.claude.json
+    echo "[OK] Auth restored from volume"
+elif [ -f /home/claude/.claude.json ] && [ ! -L /home/claude/.claude.json ]; then
+    # Auth file exists as regular file — move it into volume and symlink
+    mv /home/claude/.claude.json /home/claude/.claude/.claude.json
+    ln -sf /home/claude/.claude/.claude.json /home/claude/.claude.json
+    chown -h claude:claude /home/claude/.claude.json
+    chown claude:claude /home/claude/.claude/.claude.json
+elif [ ! -e /home/claude/.claude.json ]; then
+    # No auth file — create symlink target so Claude writes into the volume
+    touch /home/claude/.claude/.claude.json
+    chown claude:claude /home/claude/.claude/.claude.json
+    ln -sf /home/claude/.claude/.claude.json /home/claude/.claude.json
+    chown -h claude:claude /home/claude/.claude.json
+fi
+
 if [ -x "${CLAUDE_BIN}" ]; then
     VERSION=$("${CLAUDE_BIN}" --version 2>/dev/null || echo "unknown")
     echo "[OK] Claude Code found (${VERSION})"
