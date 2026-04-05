@@ -2,3 +2,5 @@ node_modules/
 code-reference/
 .claude/
 *.log
+*.png
+*.jpg
