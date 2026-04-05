@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-CLAUDE_BIN="/home/claude/.claude/local/bin/claude"
+CLAUDE_BIN="/home/claude/.local/bin/claude"
 
 echo "========================================"
 echo "  Claude Code Docker Container"
@@ -65,4 +65,4 @@ echo "[*] Starting web panel on port 7681..."
 echo "========================================"
 
 cd /home/claude/web
-exec su - claude -c "export PATH=/home/claude/.claude/local/bin:\$PATH && cd /home/claude/web && node server.js"
+exec su - claude -c "export PATH=/home/claude/.local/bin:\$PATH && cd /home/claude/web && node server.js"

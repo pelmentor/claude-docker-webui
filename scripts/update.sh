@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Code update script
-export PATH="/home/claude/.claude/local/bin:$PATH"
+export PATH="/home/claude/.local/bin:$PATH"
 
 echo -e "\033[1;36m======================================\033[0m"
 echo -e "\033[1;36m  Claude Code Updater\033[0m"
