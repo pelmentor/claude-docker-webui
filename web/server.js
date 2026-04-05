@@ -119,6 +119,18 @@ app.get('/api/status', requireAuth, (req, res) => {
     });
 });
 
+app.get('/api/check-update', requireAuth, async (req, res) => {
+    try {
+        const current = execSync('claude --version 2>/dev/null', { encoding: 'utf8' }).trim();
+        const response = await fetch('https://registry.npmjs.org/@anthropic-ai/claude-code/latest');
+        const data = await response.json();
+        const latest = data.version || '';
+        res.json({ current, latest, updateAvailable: latest && latest !== current });
+    } catch (e) {
+        res.json({ current: 'unknown', latest: 'unknown', updateAvailable: false });
+    }
+});
+
 // --- Terminal management ---
 const terminals = new Map(); // sessionId -> { pty, clients }
 

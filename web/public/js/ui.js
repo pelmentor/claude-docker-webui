@@ -130,6 +130,22 @@
     // Refresh status every 5 minutes
     setInterval(updateHeaderInfo, 5 * 60 * 1000);
 
+    // --- Update check ---
+    async function checkForUpdate() {
+        try {
+            const res = await fetch('/api/check-update');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.updateAvailable) {
+                Toast.warning(`Update available: ${data.latest} (current: ${data.current})`);
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    // Check after 10 seconds, then every hour
+    setTimeout(checkForUpdate, 10000);
+    setInterval(checkForUpdate, 60 * 60 * 1000);
+
     // --- Session timer ---
     let sessionStartTime = Date.now();
 
