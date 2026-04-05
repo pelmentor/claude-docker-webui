@@ -15,6 +15,13 @@ const CLAUDE_USER = process.env.CLAUDE_USER || 'claude';
 const CLAUDE_PASSWORD = process.env.CLAUDE_PASSWORD || 'claude';
 const SESSION_SECRET = crypto.randomBytes(32).toString('hex');
 const PING_INTERVAL = 30000;
+const CLAUDE_BIN = '/home/claude/.local/bin/claude';
+const CLAUDE_PATH = '/home/claude/.local/bin';
+
+// Ensure claude is in PATH for this process
+if (!process.env.PATH.includes(CLAUDE_PATH)) {
+    process.env.PATH = `${CLAUDE_PATH}:${process.env.PATH}`;
+}
 
 // --- Session middleware ---
 const sessionMiddleware = session({
@@ -94,7 +101,7 @@ app.use('/icon-512.svg', express.static(path.join(__dirname, 'public', 'icon-512
 app.get('/api/status', requireAuth, (req, res) => {
     let version = 'unknown';
     try {
-        version = execSync('claude --version 2>/dev/null', { encoding: 'utf8' }).trim();
+        version = execSync(`${CLAUDE_BIN} --version 2>/dev/null`, { encoding: 'utf8' }).trim();
     } catch (e) { /* ignore */ }
 
     let projectName = '';
@@ -121,7 +128,7 @@ app.get('/api/status', requireAuth, (req, res) => {
 
 app.get('/api/check-update', requireAuth, async (req, res) => {
     try {
-        const current = execSync('claude --version 2>/dev/null', { encoding: 'utf8' }).trim();
+        const current = execSync(`${CLAUDE_BIN} --version 2>/dev/null`, { encoding: 'utf8' }).trim();
         const response = await fetch('https://registry.npmjs.org/@anthropic-ai/claude-code/latest');
         const data = await response.json();
         const latest = data.version || '';
@@ -318,7 +325,7 @@ app.post('/api/new-session', requireAuth, (req, res) => {
     }
 
     // Spawn claude directly with fresh session
-    const term = pty.spawn('bash', ['-c', 'cd /project && claude --dangerously-skip-permissions'], {
+    const term = pty.spawn('bash', ['-c', `cd /project && ${CLAUDE_BIN} --dangerously-skip-permissions`], {
         name: 'xterm-256color',
         cols: req.body.cols || 80,
         rows: req.body.rows || 24,

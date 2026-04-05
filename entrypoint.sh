@@ -2,6 +2,7 @@
 set -euo pipefail
 
 CLAUDE_BIN="/home/claude/.local/bin/claude"
+CLAUDE_PATH="/home/claude/.local/bin"
 
 echo "========================================"
 echo "  Claude Code Docker Container"
@@ -22,27 +23,29 @@ mkdir -p /home/claude/.claude /home/claude/.local
 chown claude:claude /home/claude/.claude /home/claude/.local
 
 if [ -x "${CLAUDE_BIN}" ]; then
-    VERSION=$(su - claude -c "${CLAUDE_BIN} --version 2>/dev/null" || echo "unknown")
+    VERSION=$("${CLAUDE_BIN}" --version 2>/dev/null || echo "unknown")
     echo "[OK] Claude Code found (${VERSION})"
 else
     echo "[*] First run — installing Claude Code..."
-    if su - claude -c "curl -fsSL https://claude.ai/install.sh | bash" 2>&1; then
+    if su -s /bin/bash claude -c "curl -fsSL https://claude.ai/install.sh | bash" 2>&1; then
         echo "[OK] Claude Code installed"
         echo "$(date '+%Y-%m-%d %H:%M:%S') Installed" >> /home/claude/.claude/update.log
     else
         echo "[ERROR] Installation failed!"
         exit 1
     fi
-    chown -R claude:claude /home/claude/.claude 2>/dev/null || true
+    chown -R claude:claude /home/claude/.claude /home/claude/.local 2>/dev/null || true
 fi
 
 # 3. Verify Claude Code works
 echo "----------------------------------------"
-if su - claude -c "${CLAUDE_BIN} --version" > /dev/null 2>&1; then
-    VERSION=$(su - claude -c "${CLAUDE_BIN} --version 2>/dev/null")
+if [ -x "${CLAUDE_BIN}" ] && "${CLAUDE_BIN}" --version > /dev/null 2>&1; then
+    VERSION=$("${CLAUDE_BIN}" --version 2>/dev/null)
     echo "[OK] Claude Code is functional (${VERSION})"
 else
-    echo "[ERROR] Claude Code not found!"
+    echo "[ERROR] Claude Code not found at ${CLAUDE_BIN}!"
+    echo "[DEBUG] Contents of /home/claude/.local/bin/:"
+    ls -la /home/claude/.local/bin/ 2>/dev/null || echo "(directory does not exist)"
     exit 1
 fi
 
@@ -59,10 +62,15 @@ else
     echo "[WARN] /project not mounted"
 fi
 
-# 5. Start web panel
+# 5. Add claude to PATH in bashrc for interactive shells
+grep -q "${CLAUDE_PATH}" /home/claude/.bashrc 2>/dev/null || \
+    echo "export PATH=\"${CLAUDE_PATH}:\$PATH\"" >> /home/claude/.bashrc
+chown claude:claude /home/claude/.bashrc
+
+# 6. Start web panel
 echo "----------------------------------------"
 echo "[*] Starting web panel on port 7681..."
 echo "========================================"
 
 cd /home/claude/web
-exec su - claude -c "export PATH=/home/claude/.local/bin:\$PATH && cd /home/claude/web && node server.js"
+exec su -s /bin/bash claude -c "export PATH=${CLAUDE_PATH}:\$PATH && cd /home/claude/web && node server.js"
