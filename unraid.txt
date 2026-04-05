@@ -1,13 +1,13 @@
 # Запуск
-docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v claude-auth:/home/claude/.claude -v claude-bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
+docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
 
-# Обновление
-docker pull ghcr.io/pelmentor/claude-docker-webui:latest && docker rm -f claude-docker-webui && docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v claude-auth:/home/claude/.claude -v claude-bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
+# Обновление образа
+docker pull ghcr.io/pelmentor/claude-docker-webui:latest && docker rm -f claude-docker-webui && docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
 
 # Логи
 docker logs -f claude-docker-webui
 
-# Рестарт (обновит Claude Code при старте)
+# Рестарт
 docker restart claude-docker-webui
 
 # Остановить
@@ -19,5 +19,5 @@ docker rm -f claude-docker-webui
 # Удалить контейнер + образ (auth сохранится)
 docker rm -f claude-docker-webui && docker rmi ghcr.io/pelmentor/claude-docker-webui:latest
 
-# Удалить контейнер + образ + auth volume (полный wipe)
-docker rm -f claude-docker-webui && docker rmi ghcr.io/pelmentor/claude-docker-webui:latest && docker volume rm claude-auth claude-bin
+# Удалить контейнер + образ + данные (полный wipe)
+docker rm -f claude-docker-webui && docker rmi ghcr.io/pelmentor/claude-docker-webui:latest && rm -rf /mnt/user/appdata/claude-docker
