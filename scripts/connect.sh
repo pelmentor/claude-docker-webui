@@ -7,29 +7,12 @@ export PATH="/home/claude/.local/bin:$PATH"
 run_claude() {
     cd /project 2>/dev/null || cd ~
 
-    # Check if Claude is authenticated
-    # TRAP: `claude auth status` may exit 0 regardless of auth state.
-    # Parse output text instead of relying on exit code.
-    if claude auth status 2>&1 | grep -qi "logged in"; then
-        echo -e "\033[1;32m[*] Claude Code authenticated\033[0m"
-        echo -e "\033[1;34m[*] Starting Claude Code in /project...\033[0m"
-        echo ""
-        claude --dangerously-skip-permissions
-    else
-        echo -e "\033[1;33m[*] Claude Code not authenticated\033[0m"
-        echo -e "\033[1;33m[*] Starting login process...\033[0m"
-        echo ""
-        if claude login; then
-            echo ""
-            echo -e "\033[1;32m[OK] Login successful! Starting Claude Code...\033[0m"
-            echo ""
-            claude --dangerously-skip-permissions
-        else
-            echo ""
-            echo -e "\033[1;31m[ERROR] Login failed\033[0m"
-            return 1
-        fi
-    fi
+    # Claude Code handles auth internally — if not logged in, it will prompt.
+    # TRAP: Do NOT use `claude login` here — it passes "login" as a prompt
+    # to Claude Code if already authenticated, causing unwanted behavior.
+    echo -e "\033[1;34m[*] Starting Claude Code in /project...\033[0m"
+    echo ""
+    claude --dangerously-skip-permissions
 }
 
 show_menu() {
