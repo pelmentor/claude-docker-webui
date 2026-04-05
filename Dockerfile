@@ -23,9 +23,8 @@ ENV LANG=en_US.UTF-8 \
     TERM=xterm-256color \
     SHELL=/bin/bash
 
-# Install Claude Code globally
-RUN npm install -g @anthropic-ai/claude-code && \
-    npm cache clean --force
+# Install Claude Code (native installer)
+RUN su - claude -c "curl -fsSL https://claude.ai/install.sh | sh"
 
 # Web application
 WORKDIR /home/claude/web
