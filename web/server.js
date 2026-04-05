@@ -91,6 +91,7 @@ app.post('/login', (req, res) => {
     if (username === CLAUDE_USER && password === CLAUDE_PASSWORD) {
         loginAttempts.delete(ip);
         req.session.authenticated = true;
+        req.session.username = username;
         req.session.loginTime = Date.now();
         if (remember === 'on') {
             req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -194,11 +195,10 @@ app.get('/api/check-update', requireAuth, async (req, res) => {
 });
 
 // --- Terminal management ---
-// Single shared terminal for all clients (single-user app).
-// All browsers/devices see the same terminal session.
+// Terminal keyed by username — all devices of the same user see the same session.
+// Different users get separate terminals.
 const SCROLLBACK_LIMIT = 100 * 1024; // 100KB scrollback buffer
-const TERMINAL_KEY = 'shared';
-const terminals = new Map(); // key -> { pty, clients, scrollback }
+const terminals = new Map(); // username -> { pty, clients, scrollback }
 
 function spawnTerminal(sessionId, cols, rows) {
     const existing = terminals.get(sessionId);
@@ -283,11 +283,12 @@ wss.on('connection', (ws, request) => {
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
 
-    // All clients share one terminal (single-user app)
-    let entry = terminals.get(TERMINAL_KEY);
+    // Terminal keyed by username — same user = same terminal across devices
+    const terminalKey = request.session.username || 'default';
+    let entry = terminals.get(terminalKey);
     if (!entry) {
-        spawnTerminal(TERMINAL_KEY, 80, 24);
-        entry = terminals.get(TERMINAL_KEY);
+        spawnTerminal(terminalKey, 80, 24);
+        entry = terminals.get(terminalKey);
     }
 
     entry.clients.add(ws);
@@ -342,14 +343,16 @@ wss.on('close', () => clearInterval(pingInterval));
 
 // --- API: Terminal control ---
 app.post('/api/restart', requireAuth, (req, res) => {
+    const terminalKey = req.session.username || 'default';
     const cols = req.body.cols || 80;
     const rows = req.body.rows || 24;
-    spawnTerminal(TERMINAL_KEY, cols, rows);
+    spawnTerminal(terminalKey, cols, rows);
     res.json({ ok: true, action: 'restart' });
 });
 
 app.post('/api/update', requireAuth, (req, res) => {
-    const entry = terminals.get(TERMINAL_KEY);
+    const terminalKey = req.session.username || 'default';
+    const entry = terminals.get(terminalKey);
     if (entry) {
         entry.pty.removeAllListeners?.('exit');
         entry.pty.kill();
@@ -373,7 +376,7 @@ app.post('/api/update', requireAuth, (req, res) => {
     });
 
     const newEntry = { pty: term, clients: entry ? entry.clients : new Set(), scrollback: '' };
-    terminals.set(TERMINAL_KEY, newEntry);
+    terminals.set(terminalKey, newEntry);
 
     term.onData((data) => {
         newEntry.scrollback += data;
@@ -388,7 +391,7 @@ app.post('/api/update', requireAuth, (req, res) => {
     term.onExit(() => {
         // After update, restart with connect.sh
         setTimeout(() => {
-            spawnTerminal(TERMINAL_KEY, req.body.cols || 80, req.body.rows || 24);
+            spawnTerminal(terminalKey, req.body.cols || 80, req.body.rows || 24);
         }, 1000);
     });
 
@@ -396,7 +399,8 @@ app.post('/api/update', requireAuth, (req, res) => {
 });
 
 app.post('/api/new-session', requireAuth, (req, res) => {
-    const entry = terminals.get(TERMINAL_KEY);
+    const terminalKey = req.session.username || 'default';
+    const entry = terminals.get(terminalKey);
     if (entry) {
         entry.pty.removeAllListeners?.('exit');
         entry.pty.kill();
@@ -420,7 +424,7 @@ app.post('/api/new-session', requireAuth, (req, res) => {
     });
 
     const newEntry = { pty: term, clients: entry ? entry.clients : new Set(), scrollback: '' };
-    terminals.set(TERMINAL_KEY, newEntry);
+    terminals.set(terminalKey, newEntry);
 
     term.onData((data) => {
         newEntry.scrollback += data;
@@ -434,7 +438,7 @@ app.post('/api/new-session', requireAuth, (req, res) => {
 
     term.onExit(() => {
         // After exit, go back to connect.sh
-        spawnTerminal(TERMINAL_KEY, req.body.cols || 80, req.body.rows || 24);
+        spawnTerminal(terminalKey, req.body.cols || 80, req.body.rows || 24);
     });
 
     res.json({ ok: true, action: 'new-session' });
