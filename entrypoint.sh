@@ -25,7 +25,7 @@ UPDATE_LOG="/home/claude/.claude/update.log"
 mkdir -p /home/claude/.claude
 chown claude:claude /home/claude/.claude
 
-if su - claude -c "claude update 2>&1" | tee /tmp/update_output.txt; then
+if su - claude -c "npm update -g @anthropic-ai/claude-code 2>&1" | tee /tmp/update_output.txt; then
     NEW_VERSION=$(su - claude -c "claude --version 2>/dev/null" || echo "unknown")
     if [ "${NEW_VERSION}" != "${CURRENT_VERSION}" ]; then
         echo "[OK] Updated: ${CURRENT_VERSION} -> ${NEW_VERSION}"
