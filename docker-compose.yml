@@ -6,8 +6,8 @@ services:
       - "7681:7681"
     volumes:
       - /mnt/user/obsmedia:/project
-      - claude-auth:/home/claude/.claude
-      - claude-bin:/home/claude/.local
+      - /mnt/user/appdata/claude-docker/auth:/home/claude/.claude
+      - /mnt/user/appdata/claude-docker/bin:/home/claude/.local
     environment:
       - CLAUDE_USER=claude
       - CLAUDE_PASSWORD=claude
@@ -18,7 +18,3 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
-
-volumes:
-  claude-auth:
-  claude-bin:

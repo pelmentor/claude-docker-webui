@@ -1,49 +1,33 @@
 # Claude Code Docker — Инструкция
 
-## 1. Сборка и запуск на Unraid
-
-### Загрузка файлов
-
-Скопируй всю папку проекта на Unraid:
-```bash
-scp -r ./claude-docker root@UNRAID_IP:/mnt/user/appdata/claude-docker/
-```
-
-### Настройка docker-compose.yml
-
-Отредактируй `docker-compose.yml` под свои пути:
-
-```yaml
-volumes:
-  - /mnt/user/appdata/ТВОИ_ФАЙЛЫ:/project       # Путь к рабочему проекту
-  - claude-auth:/home/claude/.claude              # Не менять — auth persistence
-environment:
-  - CLAUDE_USER=claude         # Логин для веб-панели
-  - CLAUDE_PASSWORD=ТВОЙ_ПАРОЛЬ  # Пароль для веб-панели
-```
-
-### Сборка и запуск
+## 1. Запуск на Unraid
 
 ```bash
-cd /mnt/user/appdata/claude-docker
-docker compose up -d --build
+docker run -d --name claude-docker-webui -p 7681:7681 \
+  -v /mnt/user/obsmedia:/project \
+  -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude \
+  -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local \
+  -e CLAUDE_USER=claude \
+  -e CLAUDE_PASSWORD=claude \
+  --restart unless-stopped \
+  ghcr.io/pelmentor/claude-docker-webui:latest
 ```
 
-Первая сборка занимает 3-5 минут (установка Claude Code).
+Первый запуск занимает 1-2 минуты (установка Claude Code).
 
 ### Проверка логов
 
 ```bash
-docker compose logs -f claude-code
+docker logs -f claude-docker-webui
 ```
 
 Должно быть:
 ```
 [OK] User password set
-[*] Current version: 1.x.x
-[OK] Already latest: 1.x.x
-[OK] Claude Code is functional
-[OK] /project mounted (42 items)
+[*] First run — installing Claude Code...
+[OK] Claude Code installed
+[OK] Claude Code is functional (2.x.x)
+[OK] /project mounted (N items)
 [Claude Code Web] Listening on http://0.0.0.0:7681
 ```
 
@@ -54,40 +38,31 @@ docker compose logs -f claude-code
 1. Открой браузер на телефоне
 2. Перейди на `http://UNRAID_IP:7681`
 3. Введи логин и пароль (по умолчанию: `claude` / `claude`)
-4. Готово — ты в терминале
 
 ### Добавить на домашний экран (PWA)
 
-**iOS Safari:**
-1. Нажми кнопку "Поделиться" (квадрат со стрелкой)
-2. "На экран Домой"
-3. "Добавить"
+**iOS Safari:** Поделиться → На экран Домой → Добавить
 
-**Android Chrome:**
-1. Меню (три точки) → "Добавить на главный экран"
-2. "Установить"
-
-Приложение откроется в полноэкранном режиме без адресной строки.
+**Android Chrome:** Меню → Добавить на главный экран → Установить
 
 ---
 
 ## 3. Первый раз — вход в Claude
 
-При первом запуске Claude Code не авторизован. Скрипт `connect.sh` автоматически запустит `claude login`:
+При первом запуске Claude Code попросит авторизоваться:
 
 1. Откроется ссылка для авторизации
-2. Скопируй её (долгое нажатие на ссылку → "Копировать")
+2. Скопируй её (долгое нажатие → Копировать)
 3. Открой ссылку в другом браузере (или на ПК)
 4. Авторизуйся через Anthropic аккаунт
 5. Вернись в терминал — Claude Code будет готов
 
-Авторизация сохраняется в volume `claude-auth` — при перезапуске контейнера повторный логин не нужен.
+Авторизация сохраняется в `/mnt/user/appdata/claude-docker/auth/` — при перезапуске повторный логин не нужен.
 
 ---
 
 ## 4. Ежедневная работа
 
-### Обычный сценарий
 1. Открой приложение (PWA или браузер)
 2. Cookie помнит тебя — сразу попадаешь в терминал
 3. Claude Code запущен и готов к работе в `/project`
@@ -96,96 +71,69 @@ docker compose logs -f claude-code
 
 | Кнопка | Действие |
 |--------|---------|
-| Restart | Перезапускает Claude Code (убивает процесс, запускает connect.sh заново) |
-| Update | Обновляет Claude Code до последней версии и перезапускает |
+| Restart | Перезапускает Claude Code |
+| Update | Обновляет Claude Code до последней версии |
 | New | Запускает Claude Code с чистой сессией |
-| Menu (мобильный) | Показывает все кнопки + версию, проект, аптайм |
+| Menu (мобильный) | Все кнопки + версия, проект, аптайм |
 
 ### Дополнительные клавиши (мобильный)
 
 Панель внизу экрана: `Tab`, `Ctrl`, `Esc`, стрелки, `|`, `/`, `~`
 
-- **Ctrl:** нажми Ctrl, затем нужную букву (например, Ctrl → C для прерывания)
-- **Tab:** автодополнение
-- **Esc:** отмена / выход из меню
-
 ### Жесты
 
-- **Долгое нажатие** на терминал → вставка из буфера обмена
-- **Свайп влево** → отправить Escape
-- **Тройное нажатие** → показать настройки размера шрифта (A-/A+)
+- **Долгое нажатие** → вставка из буфера
+- **Свайп влево** → Escape
+- **Тройное нажатие** → настройки размера шрифта
 
 ### Меню после выхода из Claude
 
-При выходе из Claude Code (через `/exit`) появится меню:
+При выходе через `/exit`:
 - `[r]` — перезапустить Claude Code
 - `[u]` — обновить Claude Code
-- `[s]` — открыть обычный bash (для отладки)
+- `[s]` — обычный bash
 - `[q]` — закрыть терминал
 
 ---
 
 ## 5. Обновление Claude Code
 
-### Способ 1: Кнопка Update
-Нажми "Update" в хедере (или в мобильном меню). Обновление произойдёт прямо в терминале.
+Нажми кнопку **Update** в хедере. Или из меню connect.sh — `[u]`.
 
-### Способ 2: Рестарт контейнера
+---
+
+## 6. Обновление образа контейнера
+
 ```bash
-docker compose restart claude-code
-```
-При каждом старте контейнер автоматически проверяет и устанавливает обновления.
-
-### Способ 3: Из меню connect.sh
-После выхода из Claude Code выбери `[u]` в меню.
-
-### Способ 4: Полная пересборка
-```bash
-docker compose down
-docker compose up -d --build
+docker pull ghcr.io/pelmentor/claude-docker-webui:latest && docker rm -f claude-docker-webui && docker run -d --name claude-docker-webui -p 7681:7681 -v /mnt/user/obsmedia:/project -v /mnt/user/appdata/claude-docker/auth:/home/claude/.claude -v /mnt/user/appdata/claude-docker/bin:/home/claude/.local -e CLAUDE_USER=claude -e CLAUDE_PASSWORD=claude --restart unless-stopped ghcr.io/pelmentor/claude-docker-webui:latest
 ```
 
 ---
 
-## 6. Что делать если соединение оборвалось
+## 7. Что делать если соединение оборвалось
 
-### Автоматическое переподключение
-- Веб-панель автоматически пытается переподключиться (до 5 попыток)
-- Прогрессивная задержка: 1с → 2с → 3с → 5с → 5с
-- Статус виден в баре внизу: зелёный/жёлтый/красный
-
-### Если автореконнект не помог
-- Нажми кнопку "Reconnect" на экране
-- Или обнови страницу
+- Веб-панель автоматически переподключается (до 5 попыток)
+- Если не помогло — нажми кнопку "Reconnect" или обнови страницу
 - Claude Code продолжает работать в контейнере — сессия не потеряна
 
-### Если контейнер упал
-```bash
-docker compose logs claude-code   # Посмотреть что случилось
-docker compose restart claude-code # Перезапустить
-```
-
-### Восстановление сессии Claude Code
-Claude Code поддерживает `--resume` и `--continue`. После переподключения connect.sh запустит Claude Code заново — ты можешь использовать `/resume` в Claude для продолжения.
-
 ---
+
+## Данные на Unraid
+
+```
+/mnt/user/appdata/claude-docker/
+├── auth/              ← авторизация + конфиги Claude Code
+│   ├── .claude.json   ← токен авторизации
+│   └── ...
+└── bin/               ← бинарник Claude Code
+    └── bin/claude
+```
 
 ## Полезные команды
 
 ```bash
-# Статус контейнера
-docker compose ps
-
-# Логи
-docker compose logs -f claude-code
-
-# Зайти в контейнер напрямую
-docker compose exec -u claude claude-code bash
-
-# Версия Claude Code
-docker compose exec -u claude claude-code claude --version
-
-# Пересборка с нуля
-docker compose down -v  # -v удалит auth volume!
-docker compose up -d --build
+docker logs -f claude-docker-webui          # Логи
+docker restart claude-docker-webui          # Рестарт
+docker rm -f claude-docker-webui            # Удалить контейнер
+rm -rf /mnt/user/appdata/claude-docker      # Удалить все данные
 ```
