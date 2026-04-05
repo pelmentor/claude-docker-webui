@@ -5,7 +5,7 @@ const { WebSocketServer } = require('ws');
 const pty = require('node-pty');
 const path = require('path');
 const crypto = require('crypto');
-const { execSync, exec } = require('child_process');
+const { execSync } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
@@ -200,10 +200,10 @@ app.get('/api/check-update', requireAuth, async (req, res) => {
 const SCROLLBACK_LIMIT = 100 * 1024; // 100KB scrollback buffer
 const terminals = new Map(); // username -> { pty, clients, scrollback }
 
-function spawnTerminal(sessionId, cols, rows) {
-    const existing = terminals.get(sessionId);
+function spawnTerminal(terminalKey, cols, rows) {
+    const existing = terminals.get(terminalKey);
     if (existing) {
-        // TRAP: kill() triggers onExit which calls terminals.delete(sessionId).
+        // TRAP: kill() triggers onExit which calls terminals.delete().
         // If onExit fires AFTER we set the new entry, it deletes the new one.
         // Detach onExit before killing to prevent this race condition.
         existing.pty.removeAllListeners?.('exit');
@@ -227,10 +227,9 @@ function spawnTerminal(sessionId, cols, rows) {
     });
 
     const entry = { pty: term, clients: existing ? existing.clients : new Set(), scrollback: '' };
-    terminals.set(sessionId, entry);
+    terminals.set(terminalKey, entry);
 
     term.onData((data) => {
-        // Append to scrollback buffer (ring buffer, keep last SCROLLBACK_LIMIT bytes)
         entry.scrollback += data;
         if (entry.scrollback.length > SCROLLBACK_LIMIT) {
             entry.scrollback = entry.scrollback.slice(-SCROLLBACK_LIMIT);
@@ -244,9 +243,8 @@ function spawnTerminal(sessionId, cols, rows) {
     });
 
     term.onExit(() => {
-        // Only delete if this is still the current terminal for the session
-        if (terminals.get(sessionId) === entry) {
-            terminals.delete(sessionId);
+        if (terminals.get(terminalKey) === entry) {
+            terminals.delete(terminalKey);
         }
         entry.clients.forEach((ws) => {
             if (ws.readyState === 1) {
@@ -299,13 +297,19 @@ wss.on('connection', (ws, request) => {
     }
 
     ws.on('message', (data) => {
+        // TRAP: Always look up entry from Map, never use cached reference.
+        // After restart/update, a new entry replaces the old one in the Map.
+        // A stale closure reference would write to a dead PTY.
+        const current = terminals.get(terminalKey);
+        if (!current) return;
+
         const msg = data.toString();
 
         // Check for control messages
         try {
             const parsed = JSON.parse(msg);
             if (parsed.type === 'resize' && parsed.cols && parsed.rows) {
-                entry.pty.resize(parsed.cols, parsed.rows);
+                current.pty.resize(parsed.cols, parsed.rows);
                 return;
             }
             if (parsed.type === 'heartbeat') {
@@ -316,14 +320,16 @@ wss.on('connection', (ws, request) => {
         }
 
         // Forward input to pty
-        if (entry.pty) {
-            entry.pty.write(msg);
+        if (current.pty) {
+            current.pty.write(msg);
         }
     });
 
     ws.on('close', () => {
-        if (entry) {
-            entry.clients.delete(ws);
+        // Remove from whichever entry currently holds this client
+        const current = terminals.get(terminalKey);
+        if (current) {
+            current.clients.delete(ws);
         }
     });
 });
